@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Leaderboard - Compact Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a3a, #0d1b2a);
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 0.5rem;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            height: 100vh;
+            max-width: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Fullscreen button */
+        .fullscreen-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .fullscreen-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.6);
+        }
+
+        /* Admin login button */
+        #loginBtn {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(44, 62, 80, 0.9);
+            color: #ecf0f1;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            z-index: 1000;
+            font-size: 0.8rem;
+        }
+
+        #loginBtn:hover {
+            background: rgba(52, 73, 94, 0.95);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        /* Header section - COMPACT and SOLID */
+        .header {
+            text-align: center;
+            padding: 0.6rem;
+            background: #1e2832; /* Solid color instead of transparent */
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            position: relative;
+            flex-shrink: 0;
+            margin-bottom: 0.3rem;
+            border: 1px solid #2c3e50;
+        }
+
+        h1 {
+            margin: 0 0 0.4rem 0;
+            font-size: clamp(1.6rem, 4vw, 3rem);
+            color: #f5f5f5;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #f5f5f5, #3498db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .race-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .status-section {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 5px;
+            background: #2c3e50; /* Solid color */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.4rem;
+        }
+
+        .status-idle { background-color: #7f8c8d; }
+        .status-countdown { background-color: #f39c12; animation: pulse 1.5s infinite; }
+        .status-racing { background-color: #2ecc71; animation: pulse 1.5s infinite; }
+        .status-finished { background-color: #e74c3c; }
+
+        .flag-indicator {
+            width: 32px;
+            height: 20px;
+            border: 1px solid #fff;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+        }
+
+        .flag-green { background-color: #2ecc71; color: white; }
+        .flag-yellow { background-color: #f1c40f; color: black; }
+        .flag-red { background-color: #e74c3c; color: white; }
+        .flag-checkered {
+            background: repeating-linear-gradient(45deg, #000, #000 3px, #fff 3px, #fff 6px);
+            color: white;
+            text-shadow: 0 0 2px #000, 0 0 4px #000;
+        }
+
+        .race-timer {
+            font-family: 'Courier New', monospace;
+            font-size: clamp(1rem, 2.2vw, 1.5rem);
+            font-weight: bold;
+            color: #3498db;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 1.5rem;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 320px;
+            text-align: center;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #3498db;
+            font-size: 1.3rem;
+            margin-bottom: 0.6rem;
+        }
+
+        #passwordInput {
+            width: 100%;
+            padding: 0.6rem;
+            margin: 0.6rem 0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.8rem;
+            transition: border-color 0.3s ease;
+        }
+
+        #passwordInput:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .modal-button {
+            padding: 0.5rem 1.2rem;
+            margin: 0.3rem;
+            border: none;
+            border-radius: 18px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #666;
+            color: white;
+        }
+
+        .modal-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .error-message {
+            color: #e74c3c;
+            margin-top: 0.6rem;
+            display: none;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .connected {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .disconnected {
+            background-color: #c0392b;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Current race info - more compact */
+        .current-race-info {
+            text-align: center;
+            padding: 0.6rem;
+            background: rgba(52, 152, 219, 0.15);
+            border: 1px solid #3498db;
+            border-radius: 6px;
+            margin-bottom: 0.3rem;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+        }
+
+        .current-race-name {
+            color: #3498db;
+            margin-bottom: 0.3rem;
+            font-size: clamp(1rem, 2.2vw, 1.5rem);
+            font-weight: 600;
+        }
+
+        /* ENLARGED Leaderboard section - Main focus */
+        .leaderboard-section {
+            padding: 0.6rem;
+            border: 1px solid #2c3e50;
+            border-radius: 6px;
+            background: rgba(30, 40, 50, 0.85);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Hide final results section completely */
+        #finalResultsSection {
+            display: none !important;
+        }
+
+        .section-title {
+            color: #f5f5f5;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            margin-bottom: 0.6rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid #34495e;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: clamp(1.2rem, 2.8vw, 1.8rem);
+            flex-shrink: 0;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* ENHANCED Tables - optimized for drivers without separate car column */
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: clamp(1.2rem, 2.8vw, 2.2rem);
+            height: 100%;
+        }
+
+        th, td {
+            padding: clamp(0.8rem, 1.8vw, 1.8rem) clamp(0.5rem, 1vw, 1rem);
+            text-align: center;
+            border-bottom: 1px solid #34495e;
+            line-height: 1.2;
+        }
+
+        th {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-weight: 600;
+            font-size: clamp(1.3rem, 2.8vw, 2.2rem);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tbody {
+            height: 100%;
+        }
+
+        tbody tr {
+            background: rgba(44, 62, 80, 0.5);
+            transition: all 0.3s ease;
+            height: calc(100% / 8);
+            min-height: 45px;
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(44, 62, 80, 0.7);
+        }
+
+        tbody tr:hover {
+            background: rgba(52, 73, 94, 0.9);
+            transform: scale(1.01);
+        }
+
+        /* Enhanced Position styling */
+        .position-1 {
+            color: #f1c40f;
+            font-weight: bold;
+            text-shadow: 0 1px 5px rgba(241, 196, 15, 0.8);
+            font-size: 1.3em;
+        }
+        .position-2 {
+            color: #95a5a6;
+            font-weight: bold;
+            text-shadow: 0 1px 5px rgba(149, 165, 166, 0.8);
+            font-size: 1.2em;
+        }
+        .position-3 {
+            color: #e67e22;
+            font-weight: bold;
+            text-shadow: 0 1px 5px rgba(230, 126, 34, 0.8);
+            font-size: 1.2em;
+        }
+
+        /* Driver name with car in brackets */
+        .driver-name-with-car {
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+
+        .car-number {
+            color: #3498db;
+            font-weight: 600;
+            opacity: 0.9;
+            margin-left: 0.5rem;
+        }
+
+        .lap-time {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #3498db;
+            font-size: 1.1em;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: clamp(1.2rem, 2.8vw, 2.5rem);
+            color: #7f8c8d;
+            font-style: italic;
+            background: rgba(44, 62, 80, 0.4);
+            font-size: clamp(1rem, 2.2vw, 1.5rem);
+        }
+
+        /* Enhanced Gap styling */
+        .gap-leader {
+            color: #f1c40f;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(241, 196, 15, 0.6);
+            font-size: 1.1em;
+        }
+        .gap-time {
+            color: #e74c3c;
+            text-shadow: 0 1px 3px rgba(231, 76, 60, 0.6);
+            font-size: 1.05em;
+        }
+        .gap-laps {
+            color: #e67e22;
+            text-shadow: 0 1px 3px rgba(230, 126, 34, 0.6);
+            font-size: 1.05em;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); }
+            50% { box-shadow: 0 0 18px rgba(52, 152, 219, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); }
+        }
+
+        .racing-active {
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Special effects for racing state */
+        .header.racing {
+            border: 2px solid #2ecc71;
+            animation: pulseGlow 3s infinite;
+        }
+
+        .leaderboard-section.racing {
+            border-color: #2ecc71;
+            animation: pulseGlow 4s infinite;
+        }
+
+        /* Large screen optimizations */
+        @media (min-width: 1920px) {
+            body {
+                padding: 0.8rem;
+            }
+
+            .container {
+                gap: 0.6rem;
+            }
+
+            .header {
+                padding: 0.8rem;
+            }
+
+            .race-status-bar {
+                gap: 2rem;
+            }
+
+            .status-section {
+                padding: 0.5rem 1rem;
+                font-size: 1.2rem;
+            }
+
+            .leaderboard-section {
+                padding: 0.8rem;
+            }
+
+            table {
+                font-size: 2rem;
+            }
+
+            th {
+                font-size: 2.2rem;
+            }
+        }
+
+        /* Ultra-wide screen adjustments */
+        @media (min-width: 2560px) {
+            h1 {
+                font-size: 2.8rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            table {
+                font-size: 2.5rem;
+            }
+
+            th {
+                font-size: 2.8rem;
+            }
+        }
+
+        /* Fullscreen styles */
+        :fullscreen .header,
+        :-webkit-full-screen .header,
+        :-moz-full-screen .header,
+        :fullscreen .current-race-info,
+        :-webkit-full-screen .current-race-info,
+        :-moz-full-screen .current-race-info,
+        :fullscreen .fullscreen-btn,
+        :-webkit-full-screen .fullscreen-btn,
+        :-moz-full-screen .fullscreen-btn,
+        :fullscreen #loginBtn,
+        :-webkit-full-screen #loginBtn,
+        :-moz-full-screen #loginBtn,
+        :fullscreen .connection-status,
+        :-webkit-full-screen .connection-status,
+        :-moz-full-screen .connection-status {
+            display: none !important;
+        }
+
+        /* Fullscreen: Move status info to leaderboard section header */
+        :fullscreen .section-title,
+        :-webkit-full-screen .section-title,
+        :-moz-full-screen .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            margin-bottom: 0.6rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px solid #34495e;
+            font-size: clamp(1.5rem, 3.2vw, 2.2rem);
+        }
+
+        /* Fullscreen: Create status bar within leaderboard header */
+        :fullscreen .section-title::after,
+        :-webkit-full-screen .section-title::after,
+        :-moz-full-screen .section-title::after {
+            content: "";
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Fullscreen: Add status elements to the right side of leaderboard title */
+        :fullscreen .leaderboard-section,
+        :-webkit-full-screen .leaderboard-section,
+        :-moz-full-screen .leaderboard-section {
+            padding: 0.6rem;
+        }
+
+        /* Fullscreen: Take up full space */
+        :fullscreen,
+        :-webkit-full-screen,
+        :-moz-full-screen {
+            padding: 0.6rem;
+        }
+
+        :fullscreen .container,
+        :-webkit-full-screen .container,
+        :-moz-full-screen .container {
+            gap: 0;
+            height: 100vh;
+        }
+
+        :fullscreen .leaderboard-section,
+        :-webkit-full-screen .leaderboard-section,
+        :-moz-full-screen .leaderboard-section {
+            flex: 1;
+            height: 100%;
+            border: none;
+            background: #1e2832;
+            border-radius: 0;
+        }
+
+        /* Fullscreen status indicators */
+        .fullscreen-status-bar {
+            display: none;
+        }
+
+        :fullscreen .fullscreen-status-bar,
+        :-webkit-full-screen .fullscreen-status-bar,
+        :-moz-full-screen .fullscreen-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        .fullscreen-status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            background: #2c3e50;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            font-size: clamp(0.9rem, 2vw, 1.3rem);
+        }
+
+        .fullscreen-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .fullscreen-flag-indicator {
+            width: 30px;
+            height: 18px;
+            border: 1px solid #fff;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+        }
+
+        .fullscreen-race-timer {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #3498db;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+<button class="fullscreen-btn">
+    Full Screen
+</button>
+
+<div class="container">
+    <!-- Header - Now 50% smaller and solid -->
+    <div class="header" id="mainHeader">
+        <h1>🏁 Race Leaderboard</h1>
+
+        <div class="race-status-bar">
+            <div class="status-section">
+                <span id="statusIndicator" class="status-indicator status-idle"></span>
+                <span id="statusText">Waiting for Race</span>
+            </div>
+
+            <div class="status-section">
+                <span>Flag:</span>
+                <div id="flagIndicator" class="flag-indicator flag-green"></div>
+            </div>
+
+            <div class="status-section">
+                <span>Time:</span>
+                <span id="raceTimer" class="race-timer">00:00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Race Info -->
+    <div id="currentRaceInfo" class="current-race-info hidden">
+        <div class="current-race-name" id="currentRaceName">Current Race</div>
+        <div>Drivers: <span id="driverCount">0</span></div>
+    </div>
+
+    <!-- Live Leaderboard -->
+    <div class="leaderboard-section" id="liveLeaderboardSection">
+        <h2 class="section-title">
+            <span class="live-indicator"></span>
+            <span id="leaderboardTitle">🏎️ Live Leaderboard</span>
+        </h2>
+        <div class="table-container">
+            <table id="liveLeaderboard">
+                <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Driver</th>
+                    <th>Laps</th>
+                    <th>Best</th>
+                    <th>Last</th>
+                    <th>Gap</th>
+                </tr>
+                </thead>
+                <tbody id="liveLeaderboardBody">
+                <tr>
+                    <td colspan="6" class="no-data">No active race</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Connection Status -->
+<div id="connectionStatus" class="connection-status disconnected">🔴 Disconnected</div>
+
+<!-- Admin Login Button -->
+<button id="loginBtn">
+    🔒 Admin Access
+</button>
+
+<!-- Login Modal -->
+<div id="loginModal" class="modal-overlay">
+    <div class="modal-content">
+        <h2>🔒 Admin Access</h2>
+        <p>Enter your access key to continue</p>
+        <input type="password" id="passwordInput" placeholder="Access Key" autocomplete="off">
+        <div id="loginError" class="error-message">Invalid access key</div>
+        <div style="margin-top: 12px;">
+            <button id="submitLoginBtn" class="modal-button btn-primary">Login</button>
+            <button id="closeLoginBtn" class="modal-button btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    class LargeDisplayLeaderboard {
+        constructor() {
+            this.socket = io({
+                reconnection: true,
+                reconnectionAttempts: Infinity,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                randomizationFactor: 0.5,
+                transports: ['websocket']
+            });
+
+            this.currentState = null;
+            this.raceStartTime = null;
+            this.timerInterval = null;
+            this.lastRaceData = null;
+
+            this.initializeElements();
+            this.setupSocketListeners();
+            this.setupEventListeners();
+            this.updateConnectionStatus(false);
+            this.startUpdateLoop();
+        }
+
+        initializeElements() {
+            // Status elements
+            this.mainHeader = document.getElementById('mainHeader');
+            this.statusIndicator = document.getElementById('statusIndicator');
+            this.statusText = document.getElementById('statusText');
+            this.flagIndicator = document.getElementById('flagIndicator');
+            this.raceTimer = document.getElementById('raceTimer');
+            this.connectionStatus = document.getElementById('connectionStatus');
+
+            // Race info elements
+            this.currentRaceInfo = document.getElementById('currentRaceInfo');
+            this.currentRaceName = document.getElementById('currentRaceName');
+            this.driverCount = document.getElementById('driverCount');
+
+            // Leaderboard elements
+            this.liveLeaderboardSection = document.getElementById('liveLeaderboardSection');
+            this.liveLeaderboardBody = document.getElementById('liveLeaderboardBody');
+
+            // Login modal elements
+            this.loginBtn = document.getElementById('loginBtn');
+            this.loginModal = document.getElementById('loginModal');
+            this.passwordInput = document.getElementById('passwordInput');
+            this.loginError = document.getElementById('loginError');
+            this.submitLoginBtn = document.getElementById('submitLoginBtn');
+            this.closeLoginBtn = document.getElementById('closeLoginBtn');
+            this.fullscreenBtn = document.querySelector('.fullscreen-btn');
+        }
+
+        setupEventListeners() {
+            if (this.loginBtn) {
+                this.loginBtn.addEventListener('click', () => {
+                    this.openLoginModal();
+                });
+            }
+
+            if (this.submitLoginBtn) {
+                this.submitLoginBtn.addEventListener('click', () => {
+                    this.submitLogin();
+                });
+            }
+
+            if (this.closeLoginBtn) {
+                this.closeLoginBtn.addEventListener('click', () => {
+                    this.closeLoginModal();
+                });
+            }
+
+            if (this.passwordInput) {
+                this.passwordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.submitLogin();
+                    }
+                });
+            }
+
+            if (this.loginModal) {
+                this.loginModal.addEventListener('click', (e) => {
+                    if (e.target === this.loginModal) {
+                        this.closeLoginModal();
+                    }
+                });
+            }
+
+            if (this.fullscreenBtn) {
+                this.fullscreenBtn.addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+            }
+
+            document.addEventListener('fullscreenchange', () => {
+                this.handleFullscreenChange();
+            });
+            document.addEventListener('webkitfullscreenchange', () => {
+                this.handleFullscreenChange();
+            });
+            document.addEventListener('mozfullscreenchange', () => {
+                this.handleFullscreenChange();
+            });
+        }
+
+        setupSocketListeners() {
+            this.socket.on('connect', () => {
+                this.updateConnectionStatus(true);
+                this.socket.emit('request_last_race');
+            });
+
+            this.socket.on('disconnect', (reason) => {
+                this.updateConnectionStatus(false);
+            });
+
+            this.socket.on('state_update', (state) => {
+                console.log("STATE UPDATE:", state);
+                this.currentState = state;
+                this.updateRaceStatus(state);
+                this.updateLeaderboard(state);
+            });
+            this.socket.on('last_race_update', (lastRace) => {
+                this.lastRaceData = lastRace;
+                console.log('Received last race data:', lastRace);
+                this.isInitialLoad = false;
+                
+
+                
+
+                    // If we have last race data and no current race, update the title immediately
+                if (this.lastRaceData && (!this.currentState || !this.currentState.currentRace || 
+                    this.currentState.raceMode === 'idle')) {
+                    const titleEl = document.getElementById('leaderboardTitle');
+                    if (titleEl) titleEl.textContent = '🏎️ Last Race Leaderboard';
+                }
+
+                // Show last race immediately if no live race is active
+                if (!this.currentState || !this.currentState.currentRace || 
+                    this.currentState.raceMode === 'idle') {
+                    const titleEl = document.getElementById('leaderboardTitle');
+                    if (titleEl) titleEl.textContent = '🏎️ Last Race Leaderboard';
+                    const leaderboardData = this.processLapData(this.lastRaceData);
+                    this.renderLeaderboard(leaderboardData);
+                    }
+                if (!this.currentState || !this.currentState.currentRace || 
+                    this.currentState.raceMode === 'idle') {
+                    this.updateLeaderboard(this.currentState);
+                }
+                });
+
+
+            this.socket.on('lap_update', (lapData) => {
+                this.handleLapUpdate(lapData);
+            });
+
+            this.socket.on('error_message', (message) => {
+                console.error(`Server error: ${message}`);
+            });
+        }
+
+        toggleFullscreen() {
+            if (!document.fullscreenElement &&
+                !document.webkitFullscreenElement &&
+                !document.mozFullScreenElement) {
+                const elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                }
+            }
+        }
+
+        handleFullscreenChange() {
+            const isFullscreen = !!(document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement);
+
+            if (isFullscreen) {
+                if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'none';
+                if (this.loginBtn) this.loginBtn.style.display = 'none';
+                document.body.style.padding = '0.6rem';
+                this.createFullscreenStatusBar();
+            } else {
+                if (this.fullscreenBtn) this.fullscreenBtn.style.display = 'block';
+                if (this.loginBtn) this.loginBtn.style.display = 'flex';
+                document.body.style.padding = '0.5rem';
+                this.removeFullscreenStatusBar();
+            }
+        }
+
+        createFullscreenStatusBar() {
+            this.removeFullscreenStatusBar();
+
+            const statusBar = document.createElement('div');
+            statusBar.className = 'fullscreen-status-bar';
+            statusBar.id = 'fullscreenStatusBar';
+
+            // Status item
+            const statusItem = document.createElement('div');
+            statusItem.className = 'fullscreen-status-item';
+            const statusIndicator = document.createElement('span');
+            statusIndicator.className = 'fullscreen-status-indicator status-idle';
+            statusIndicator.id = 'fullscreenStatusIndicator';
+            const statusText = document.createElement('span');
+            statusText.id = 'fullscreenStatusText';
+            statusText.textContent = 'Waiting for Race';
+            statusItem.appendChild(statusIndicator);
+            statusItem.appendChild(statusText);
+
+            // Flag item
+            const flagItem = document.createElement('div');
+            flagItem.className = 'fullscreen-status-item';
+            const flagLabel = document.createElement('span');
+            flagLabel.textContent = 'Flag:';
+            const flagIndicator = document.createElement('div');
+            flagIndicator.className = 'fullscreen-flag-indicator flag-green';
+            flagIndicator.id = 'fullscreenFlagIndicator';
+            flagIndicator.textContent = 'GRN';
+            flagItem.appendChild(flagLabel);
+            flagItem.appendChild(flagIndicator);
+
+            // Timer item
+            const timerItem = document.createElement('div');
+            timerItem.className = 'fullscreen-status-item';
+            const timerLabel = document.createElement('span');
+            timerLabel.textContent = 'Time:';
+            const timer = document.createElement('span');
+            timer.className = 'fullscreen-race-timer';
+            timer.id = 'fullscreenRaceTimer';
+            timer.textContent = '00:00';
+            timerItem.appendChild(timerLabel);
+            timerItem.appendChild(timer);
+
+            statusBar.appendChild(statusItem);
+            statusBar.appendChild(flagItem);
+            statusBar.appendChild(timerItem);
+
+            // Insert status bar with null check
+            const sectionTitle = this.liveLeaderboardSection?.querySelector('.section-title');
+            if (sectionTitle) {
+                sectionTitle.appendChild(statusBar);
+            }
+
+            if (this.currentState) {
+                this.updateFullscreenStatus(this.currentState);
+            }
+        }
+
+        removeFullscreenStatusBar() {
+            const existingStatusBar = document.getElementById('fullscreenStatusBar');
+            if (existingStatusBar) {
+                existingStatusBar.remove();
+            }
+        }
+
+        updateFullscreenStatus(state) {
+            const isFullscreen = !!(document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement);
+
+            if (!isFullscreen) return;
+
+            const fullscreenStatusIndicator = document.getElementById('fullscreenStatusIndicator');
+            const fullscreenStatusText = document.getElementById('fullscreenStatusText');
+            const fullscreenFlagIndicator = document.getElementById('fullscreenFlagIndicator');
+            const fullscreenRaceTimer = document.getElementById('fullscreenRaceTimer');
+
+            if (fullscreenStatusIndicator && fullscreenStatusText) {
+                const statusTexts = {
+                    'idle': 'Waiting for Race',
+                    'countdown': 'Race Starting...',
+                    'racing': 'Race in Progress',
+                    'finished': 'Race Finished'
+                };
+                fullscreenStatusIndicator.className = `fullscreen-status-indicator status-${state.raceMode}`;
+                fullscreenStatusText.textContent = statusTexts[state.raceMode] || 'Unknown Status';
+            }
+
+            if (fullscreenFlagIndicator) {
+                const flagTexts = {
+                    'green': 'GRN',
+                    'yellow': 'YEL',
+                    'red': 'RED',
+                    'checkered': 'FIN'
+                };
+                fullscreenFlagIndicator.textContent = flagTexts[state.flag] || state.flag.toUpperCase();
+                fullscreenFlagIndicator.className = `fullscreen-flag-indicator flag-${state.flag}`;
+            }
+
+            if (fullscreenRaceTimer && this.raceTimer) {
+                fullscreenRaceTimer.textContent = this.raceTimer.textContent;
+            }
+        }
+
+        updateConnectionStatus(connected) {
+            if (this.connectionStatus) {
+                if (connected) {
+                    this.connectionStatus.textContent = '🟢 Connected';
+                    this.connectionStatus.className = 'connection-status connected';
+                } else {
+                    this.connectionStatus.textContent = '🔴 Disconnected';
+                    this.connectionStatus.className = 'connection-status disconnected';
+                }
+            }
+        }
+
+        updateRaceStatus(state) {
+            // Update status indicator and text
+            const statusTexts = {
+                'idle': 'Waiting for Race',
+                'countdown': 'Race Starting...',
+                'racing': 'Race in Progress',
+                'finished': 'Race Finished'
+            };
+
+            if (this.statusIndicator) {
+                this.statusIndicator.className = `status-indicator status-${state.raceMode}`;
+            }
+            if (this.statusText) {
+                this.statusText.textContent = statusTexts[state.raceMode] || 'Unknown Status';
+            }
+
+            // Update header styling for racing state
+            if (state.raceMode === 'racing') {
+                if (this.mainHeader) this.mainHeader.classList.add('racing');
+                if (this.liveLeaderboardSection) this.liveLeaderboardSection.classList.add('racing');
+            } else {
+                if (this.mainHeader) this.mainHeader.classList.remove('racing');
+                if (this.liveLeaderboardSection) this.liveLeaderboardSection.classList.remove('racing');
+            }
+
+            // Update flag indicator
+            const flagTexts = {
+                'green': 'GRN',
+                'yellow': 'YEL',
+                'red': 'RED',
+                'checkered': 'FIN'
+            };
+
+            if (this.flagIndicator) {
+                this.flagIndicator.textContent = flagTexts[state.flag] || state.flag.toUpperCase();
+                this.flagIndicator.className = `flag-indicator flag-${state.flag}`;
+            }
+
+            // Update current race info and timer
+            if (state.currentRace) {
+                if (this.currentRaceInfo) this.currentRaceInfo.classList.remove('hidden');
+                if (this.currentRaceName) {
+                    this.currentRaceName.textContent = state.currentRace.name || `Race ${state.currentRace.id}`;
+                }
+                if (this.driverCount) {
+                    this.driverCount.textContent = state.currentRace.drivers ? state.currentRace.drivers.length : 0;
+                }
+
+                // Race timer logic
+                if (state.raceMode === 'racing' && state.currentRace.startTime) {
+                    this.raceStartTime = state.currentRace.startTime;
+                    this.startTimer(state.currentRace.startTime);
+                } else {
+                    this.stopTimer();
+                }
+            } else {
+                if (this.currentRaceInfo) this.currentRaceInfo.classList.add('hidden');
+                this.stopTimer();
+            }
+
+            this.updateFullscreenStatus(state);
+        }
+
+        startTimer(startTime) {
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+            }
+
+            // Get race duration from server state
+            const raceDurationMinutes = this.currentState?.raceDurationMinutes || 10;
+            const raceDurationMs = raceDurationMinutes * 60 * 1000;
+
+            this.timerInterval = setInterval(() => {
+                if (this.raceStartTime && this.raceTimer) {
+                    const elapsed = Date.now() - this.raceStartTime;
+                    const remaining = raceDurationMs - elapsed;
+
+                    if (remaining <= 0) {
+                        this.raceTimer.textContent = '00:00';
+                        this.stopTimer();
+                        return;
+                    }
+
+                    const minutes = Math.floor(remaining / 60000);
+                    const seconds = Math.floor((remaining % 60000) / 1000);
+                    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                    this.raceTimer.textContent = timeString;
+
+                    // Update fullscreen timer if it exists
+                    const fullscreenTimer = document.getElementById('fullscreenRaceTimer');
+                    if (fullscreenTimer) {
+                        fullscreenTimer.textContent = timeString;
+                    }
+                }
+            }, 1000);
+        }
+
+        stopTimer() {
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+
+            if (this.raceTimer) this.raceTimer.textContent = '00:00';
+            const fullscreenTimer = document.getElementById('fullscreenRaceTimer');
+            if (fullscreenTimer) {
+                fullscreenTimer.textContent = '00:00';
+            }
+        }
+
+        updateLeaderboard(state) {
+            if (!this.liveLeaderboardBody) return;
+
+            const titleEl = document.getElementById('leaderboardTitle');
+
+                if (this.isInitialLoad) {
+                    this.liveLeaderboardBody.innerHTML = '<tr><td colspan="6" class="no-data">Loading...</td></tr>';
+                    return;
+                }
+
+                
+
+            if ((!state || !state.currentRace || state.raceMode === 'idle') && this.lastRaceData) {
+                console.log('Displaying last race data:', this.lastRaceData);
+                const leaderboardData = this.processLapData(this.lastRaceData);
+                this.renderLeaderboard(leaderboardData, true); // Pass true for isLastRace
+                return;
+            }
+
+            if (!state.currentRace || state.raceMode === 'idle') {
+                if (titleEl) titleEl.textContent = '🏎️ Live Leaderboard';
+                this.liveLeaderboardBody.innerHTML = '<tr><td colspan="6" class="no-data">No active race</td></tr>';
+                return;
+            }
+
+            if (!state.currentRace.laps || Object.keys(state.currentRace.laps).length === 0) {
+                if (titleEl) titleEl.textContent = '🏎️ Live Leaderboard';
+                this.liveLeaderboardBody.innerHTML = '<tr><td colspan="6" class="no-data">Waiting for lap times...</td></tr>';
+                return;
+            }
+
+            const leaderboardData = this.processLapData(state.currentRace);
+            if (titleEl) titleEl.textContent = '🏎️ Live Leaderboard';
+            this.renderLeaderboard(leaderboardData, false); // Pass false for isLastRace
+        }
+
+
+        processLapData(race) {
+            const data = [];
+
+            // Include ALL drivers from race.drivers, not just those with laps
+            if (race.drivers) {
+                race.drivers.forEach(driver => {
+                    const laps = race.laps && race.laps[driver.name] ? race.laps[driver.name] : [];
+                    const totalLaps = laps.length;
+                    const bestLap = totalLaps > 0 ? Math.min(...laps) : null;
+                    const lastLap = totalLaps > 0 ? laps[laps.length - 1] : null;
+                    const totalTime = laps.reduce((sum, lap) => sum + lap, 0);
+
+                    data.push({
+                        driver: driver.name,
+                        car: driver.car || 'TBA',
+                        laps: totalLaps,
+                        bestLap,
+                        lastLap,
+                        totalTime
+                    });
+                });
+            }
+
+            // Correct sorting logic that maintains proper racing positions
+            data.sort((a, b) => {
+                // First priority: More laps = better position
+                if (a.laps !== b.laps) {
+                    return b.laps - a.laps; // Higher lap count wins
+                }
+
+                // Second priority: If both have 0 laps, sort alphabetically for consistency
+                if (a.laps === 0 && b.laps === 0) {
+                    return a.driver.localeCompare(b.driver);
+                }
+
+                // Third priority: Same lap count (and > 0), faster total time wins
+                if (a.laps > 0 && b.laps > 0) {
+                    return a.totalTime - b.totalTime; // Lower total time = faster = better position
+                }
+
+                // Fallback: alphabetical
+                return a.driver.localeCompare(b.driver);
+            });
+
+            return data;
+        }
+
+        renderLeaderboard(data, isLastRace = false) {
+            if (!this.liveLeaderboardBody) return;
+            // Update title text
+            const titleEl = document.getElementById('leaderboardTitle');
+            if (titleEl) {
+                titleEl.textContent = isLastRace
+                    ? '🏎️ Last Race Leaderboard'
+                    : '🏎️ Live Leaderboard';
+            }
+
+            this.liveLeaderboardBody.innerHTML = '';
+
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                const position = index + 1;
+
+                let gap = '';
+                let gapClass = '';
+                if (index === 0) {
+                    gap = 'Leader';
+                    gapClass = 'gap-leader';
+                } else {
+                    const leader = data[0];
+                    if (row.laps === leader.laps) {
+                        const timeDiff = row.totalTime - leader.totalTime;
+                        gap = `+${this.formatTime(timeDiff)}`;
+                        gapClass = 'gap-time';
+                    } else {
+                        gap = `-${leader.laps - row.laps}L`;
+                        gapClass = 'gap-laps';
+                    }
+                }
+
+                // Combine driver name with car in brackets
+                const driverDisplay = row.car && row.car !== 'TBA'
+                    ? `${row.driver} <span class="car-number">[${row.car}]</span>`
+                    : row.driver;
+
+                tr.innerHTML = `
+                <td class="position-${Math.min(position, 3)}">${position}</td>
+                <td class="driver-name-with-car">${driverDisplay}</td>
+                <td>${row.laps}</td>
+                <td class="lap-time">${row.bestLap ? this.formatTime(row.bestLap) : '-'}</td>
+                <td class="lap-time">${row.lastLap ? this.formatTime(row.lastLap) : '-'}</td>
+                <td class="${gapClass}">${gap}</td>
+            `;
+
+                this.liveLeaderboardBody.appendChild(tr);
+            });
+        }
+
+        handleLapUpdate(lapData) {
+            console.log(`Processing lap update for ${lapData.driverName}: ${this.formatTime(lapData.lapTime)}`);
+
+            // Update the current state immediately
+            if (this.currentState && this.currentState.currentRace) {
+                if (!this.currentState.currentRace.laps) {
+                    this.currentState.currentRace.laps = {};
+                }
+                if (!this.currentState.currentRace.laps[lapData.driverName]) {
+                    this.currentState.currentRace.laps[lapData.driverName] = [];
+                }
+
+                // Add the new lap time if we don't already have it
+                const currentLaps = this.currentState.currentRace.laps[lapData.driverName];
+                if (currentLaps.length < lapData.lapNumber) {
+                    currentLaps.push(lapData.lapTime);
+                }
+
+                // Update the leaderboard immediately
+                this.updateLeaderboard(this.currentState);
+            }
+        }
+
+        formatTime(milliseconds) {
+            if (!milliseconds || milliseconds <= 0) return '-';
+
+            const totalSeconds = milliseconds / 1000;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            if (minutes > 0) {
+                return `${minutes}:${seconds.toFixed(3).padStart(6, '0')}`;
+            } else {
+                return `${seconds.toFixed(3)}s`;
+            }
+        }
+
+        startUpdateLoop() {
+            setInterval(() => {
+                if (this.currentState) {
+                    this.updateLeaderboard(this.currentState);
+                }
+            }, 3000);
+        }
+
+        openLoginModal() {
+            if (this.loginModal) {
+                this.loginModal.style.display = 'flex';
+                if (this.passwordInput) {
+                    this.passwordInput.value = '';
+                    this.passwordInput.focus();
+                }
+                if (this.loginError) {
+                    this.loginError.style.display = 'none';
+                }
+            }
+        }
+
+        closeLoginModal() {
+            if (this.loginModal) {
+                this.loginModal.style.display = 'none';
+            }
+        }
+
+        async submitLogin() {
+            const password = this.passwordInput?.value.trim();
+            if (!password) return;
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.redirect) {
+                    window.location.href = result.redirect;
+                } else {
+                    if (this.loginError) this.loginError.style.display = 'block';
+                    if (this.passwordInput) {
+                        this.passwordInput.value = '';
+                        this.passwordInput.focus();
+                    }
+
+                    setTimeout(() => {
+                        if (this.loginError) this.loginError.style.display = 'none';
+                    }, 3000);
+                }
+            } catch (error) {
+                console.error(`Login error: ${error.message}`);
+                if (this.loginError) {
+                    this.loginError.textContent = 'Connection error. Please try again.';
+                    this.loginError.style.display = 'block';
+
+                    setTimeout(() => {
+                        this.loginError.style.display = 'none';
+                        this.loginError.textContent = 'Invalid access key';
+                    }, 3000);
+                }
+            }
+        }
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        new LargeDisplayLeaderboard();
+    });
+</script>
+</body>
+</html>
