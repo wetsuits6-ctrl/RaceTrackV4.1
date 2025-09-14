@@ -369,9 +369,8 @@
 
     updateTimer(state) {
       if (state.raceMode === 'racing' && state.currentRace?.startTime) {
-        if (!this.raceTimerInterval) {
-          this.startTimer(state.currentRace.startTime);
-        }
+        // Start or update the timer (don't check if interval exists)
+        this.startTimer(state.currentRace.startTime);
       } else {
         this.stopTimer();
         this.raceTimer.textContent = '00:00';
@@ -379,12 +378,42 @@
     }
 
     startTimer(startTime) {
+      // Clear any existing timer first
+      if (this.raceTimerInterval) {
+        clearInterval(this.raceTimerInterval);
+        this.raceTimerInterval = null;
+      }
+
+      if (!startTime) return;
+
+      // Update immediately, then set interval
+      this.updateTimerDisplay(startTime);
+
       this.raceTimerInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const minutes = Math.floor(elapsed / 60000);
-        const seconds = Math.floor((elapsed % 60000) / 1000);
-        this.raceTimer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        this.updateTimerDisplay(startTime);
       }, 1000);
+    }
+
+    updateTimerDisplay(startTime) {
+      if (!this.raceTimer) return;
+
+      // Get race duration from server state (default to 10 minutes if not available)
+      const raceDurationMinutes = this.currentState?.raceDurationMinutes || 10;
+      const raceDurationMs = raceDurationMinutes * 60 * 1000;
+
+      const elapsed = Date.now() - startTime;
+      const remaining = raceDurationMs - elapsed;
+
+      if (remaining <= 0) {
+        this.raceTimer.textContent = '00:00';
+        this.stopTimer();
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+
+      this.raceTimer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
     stopTimer() {

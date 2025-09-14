@@ -423,36 +423,37 @@ io.on('connection', (socket) => {
             // Save race data before finishing
             if (state.currentRace) {
                 const raceResults = {
-                id: state.currentRace.id,
-                name: state.currentRace.name,
-                drivers: state.currentRace.drivers,
-                laps: state.currentRace.laps || {},
-                startTime: state.currentRace.startTime,
-                endTime: Date.now(),
-                duration: Date.now() - state.currentRace.startTime
+                    id: state.currentRace.id,
+                    name: state.currentRace.name,
+                    drivers: state.currentRace.drivers,
+                    laps: state.currentRace.laps || {},
+                    startTime: state.currentRace.startTime,
+                    endTime: Date.now(),
+                    duration: Date.now() - state.currentRace.startTime
                 };
 
                 state.lastResults.unshift(raceResults);
                 if (state.lastResults.length > 10) {
-                state.lastResults = state.lastResults.slice(0, 10);
+                    state.lastResults = state.lastResults.slice(0, 10);
                 }
 
                 // Save as last race
-                lastRace = { ...state.currentRace };
+                lastRace = {...state.currentRace};
                 saveLastRace(lastRace);
-                
+
                 console.log(`Race automatically finished and saved: ${raceResults.name}`);
             }
 
-            // Race finishes and goes back to idle (no paddock mode)
-            state.raceMode = 'idle';
-            state.flag = 'green';
-            state.currentRace = null;
-            console.log('Race automatically finished after time limit - back to idle state');
-            io.emit('state_update', getClientState());
-            io.emit('last_race_update', lastRace); // Emit last race update
-            }, raceDuration);
+            // CHANGED: Go to finished state instead of idle
+            // Race finishes but stays visible until manually cleared
+            state.raceMode = 'finished';  // Changed from 'idle'
+            state.flag = 'red';           // Changed from 'green'
+            // state.currentRace = null;  // REMOVED - keep race data visible
 
+            console.log('Race automatically finished after time limit - now in finished state');
+            io.emit('state_update', getClientState());
+            io.emit('last_race_update', lastRace);
+        }, raceDuration);
     });
 
     socket.on('admin_set_flag', (flag) => {

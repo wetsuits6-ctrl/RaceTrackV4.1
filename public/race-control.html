@@ -680,24 +680,30 @@
 
                 this.vibrate();
 
-                const isPaddock = this.currentState?.raceMode === 'paddock';
-                const isRacing = this.currentState?.raceMode === 'racing';
+                const raceMode = this.currentState?.raceMode;
+                const isPaddock = raceMode === 'paddock';
+                const isRacing = raceMode === 'racing';
+                const isFinished = raceMode === 'finished';
 
                 let confirmMessage, socketEvent;
 
                 if (isPaddock) {
                     confirmMessage = 'SAFETY CONFIRMATION:\n\nClear paddock and prepare for next race?';
                     socketEvent = 'admin_clear_paddock';
+                } else if (isFinished) {
+                    confirmMessage = 'Clear race results and return to idle state?';
+                    socketEvent = 'admin_clear_results';
                 } else {
-                    confirmMessage = 'SAFETY CONFIRMATION:\n\nEnd the current race?\n\nThis will send drivers to paddock with danger flag.';
+                    confirmMessage = 'SAFETY CONFIRMATION:\n\nEnd the current race?\n\nThis will finish the race and show results.';
                     socketEvent = 'admin_finish_race';
                 }
 
-                this.logToDebug(`${isPaddock ? 'Clear Paddock' : 'End Race'} button pressed`);
+                const actionName = isPaddock ? 'Clear Paddock' : isFinished ? 'Clear Results' : 'End Race';
+                this.logToDebug(`${actionName} button pressed`);
 
                 if (confirm(confirmMessage)) {
                     this.socket.emit(socketEvent);
-                    this.logToDebug(isPaddock ? 'Paddock cleared' : 'Race ended - entering paddock mode', 'success');
+                    this.logToDebug(`${actionName} completed`, 'success');
                 }
             });
 

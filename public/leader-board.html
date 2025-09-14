@@ -1133,38 +1133,49 @@
         }
 
         startTimer(startTime) {
+            // Only start a new timer if one doesn't exist
             if (this.timerInterval) {
-                clearInterval(this.timerInterval);
+                return; // Don't clear existing timer, just return
             }
+
+            this.raceStartTime = startTime;
 
             // Get race duration from server state
             const raceDurationMinutes = this.currentState?.raceDurationMinutes || 10;
             const raceDurationMs = raceDurationMinutes * 60 * 1000;
 
+            // Update immediately
+            this.updateTimerDisplay(startTime, raceDurationMs);
+
             this.timerInterval = setInterval(() => {
-                if (this.raceStartTime && this.raceTimer) {
-                    const elapsed = Date.now() - this.raceStartTime;
-                    const remaining = raceDurationMs - elapsed;
-
-                    if (remaining <= 0) {
-                        this.raceTimer.textContent = '00:00';
-                        this.stopTimer();
-                        return;
-                    }
-
-                    const minutes = Math.floor(remaining / 60000);
-                    const seconds = Math.floor((remaining % 60000) / 1000);
-                    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-                    this.raceTimer.textContent = timeString;
-
-                    // Update fullscreen timer if it exists
-                    const fullscreenTimer = document.getElementById('fullscreenRaceTimer');
-                    if (fullscreenTimer) {
-                        fullscreenTimer.textContent = timeString;
-                    }
-                }
+                this.updateTimerDisplay(startTime, raceDurationMs);
             }, 1000);
+        }
+
+// New helper function to update timer display
+        updateTimerDisplay(startTime, raceDurationMs) {
+            if (!this.raceTimer || !startTime) return;
+
+            const elapsed = Date.now() - startTime;
+            const remaining = raceDurationMs - elapsed;
+
+            if (remaining <= 0) {
+                this.raceTimer.textContent = '00:00';
+                this.stopTimer();
+                return;
+            }
+
+            const minutes = Math.floor(remaining / 60000);
+            const seconds = Math.floor((remaining % 60000) / 1000);
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            this.raceTimer.textContent = timeString;
+
+            // Update fullscreen timer if it exists
+            const fullscreenTimer = document.getElementById('fullscreenRaceTimer');
+            if (fullscreenTimer) {
+                fullscreenTimer.textContent = timeString;
+            }
         }
 
         stopTimer() {
